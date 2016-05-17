@@ -23,6 +23,8 @@ import android.net.IEthernetServiceListener;
 import android.net.IpConfiguration;
 import android.net.IpConfiguration.IpAssignment;
 import android.net.IpConfiguration.ProxySettings;
+import android.provider.Settings;
+import android.os.Looper;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -30,6 +32,7 @@ import android.os.RemoteCallbackList;
 import android.os.RemoteException;
 import android.util.Log;
 import android.util.PrintWriterPrinter;
+import android.net.EthernetManager;
 
 import com.android.internal.util.IndentingPrintWriter;
 
@@ -85,12 +88,44 @@ public class EthernetServiceImpl extends IEthernetManager.Stub {
                 "ConnectivityService");
     }
 
+    class TstartThread extends Thread {
+        public void run() {
+            Looper.prepare();
+            mTracker.start(mContext, mHandler);
+            mStarted.set(true);
+            Looper.loop();
+        }
+    }
+
+    public void Trackstart() { //add by FriendlyARM
+        new TstartThread().start();
+    }
+
+    public void Trackstop() {
+        Log.i(TAG, "Stop Ethernet service");
+        Thread tstopthread = new Thread(new Runnable() {
+                public void run() {
+                    Looper.prepare();
+                    mTracker.stop();
+                    mStarted.set(false);
+                    Looper.loop();
+                    }
+                });
+        tstopthread.start();
+    }
+
     public void start() {
         Log.i(TAG, "Starting Ethernet service");
 
         HandlerThread handlerThread = new HandlerThread("EthernetServiceThread");
         handlerThread.start();
         mHandler = new Handler(handlerThread.getLooper());
+
+        int enable = Settings.Global.getInt(mContext.getContentResolver(), Settings.ETHERNET_ON, 0); //add by FriendlyARM
+        if (enable != EthernetManager.ETH_STATE_ENABLED) {
+            Log.i(TAG, "Ethernet is not enable");
+            return;
+        }
 
         mTracker.start(mContext, mHandler);
 

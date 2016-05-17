@@ -87,6 +87,7 @@ class EthernetNetworkFactory {
     private NetworkAgent mNetworkAgent;
     private LocalNetworkFactory mFactory;
     private Context mContext;
+    private Handler mHandler;
 
     /** Product-dependent regular expression of interface names we track. */
     private static String mIfaceMatch = "";
@@ -268,6 +269,13 @@ class EthernetNetworkFactory {
 
                 if (config.getIpAssignment() == IpAssignment.STATIC) {
                     if (!setStaticIpAddress(config.getStaticIpConfiguration())) {
+                        //if error then stop and restart add by FriendlyARM
+                        if ((mContext != null) && (mHandler != null)) {
+                            Log.d(TAG, "Setting static ip failed now restart");
+                            stop();
+                            start(mContext,mHandler);
+                        }
+
                         // We've already logged an error.
                         return;
                     }
@@ -362,6 +370,7 @@ class EthernetNetworkFactory {
         mFactory.register();
 
         mContext = context;
+        mHandler = target; //add by FriendlyARM
 
         // Start tracking interface change events.
         mInterfaceObserver = new InterfaceObserver();
@@ -386,6 +395,8 @@ class EthernetNetworkFactory {
                         // any real link up/down notification will only arrive
                         // after we've done this.
                         if (mNMService.getInterfaceConfig(iface).hasFlag("running")) {
+                            if (!iface.equals("eth0")) //add by FriendlyARM make sure the interface is eth0
+                                continue;
                             updateInterfaceState(iface, true);
                         }
                         break;
